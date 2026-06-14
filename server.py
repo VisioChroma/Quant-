@@ -41,7 +41,7 @@ CORS(app)
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-NEWSAPI_KEY = "1b9fbea1432245fe8dfa408dbe7aef6c"
+NEWSAPI_KEY = "Your_NewsAPI_Key_Here"  # Get a free key from https://newsapi.org/
 
 # ── S3 CONFIG (changed from local) ───────────────────────────────────────────
 S3_BUCKET  = "quant-data-siddu-bucket"   # your bucket name
