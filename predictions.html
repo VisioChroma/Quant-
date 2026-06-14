@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quant – Predictions</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    @font-face {
+      font-family: 'LuckiestGuy';
+      src: url('assets/fonts/LuckiestGuy-Regular.ttf') format('truetype');
+    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: 'Inter', sans-serif;
+      background: #040200;
+      color: #fff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    .navbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 36px;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      background: #040200;
+    }
+    .logo { display: flex; align-items: center; }
+    .logo-img { height: 76px; width: auto; display: block; object-fit: contain; }
+    .logo-fallback { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; color: #fff; display: none; }
+    .nav-icons {
+      display: flex; gap: 8px; align-items: center;
+      background: rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 6px 10px;
+    }
+    .nav-icon-btn {
+      width: 40px; height: 40px; border-radius: 10px; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; transition: background 0.15s;
+    }
+    .nav-icon-btn:hover { background: rgba(255,255,255,0.1); }
+    .nav-icon-btn.active { background: rgba(255,255,255,0.15); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+    .nav-icon-btn img { width: 22px; height: 22px; object-fit: contain; filter: invert(1); }
+    .nav-icon-btn svg { color: white; }
+
+    /* ── HERO (fixed behind panel) ── */
+    .hero-fixed {
+      position: fixed;
+      top: 72px; /* below navbar */
+      left: 0; right: 0;
+      height: 200px;
+      display: flex; align-items: center; justify-content: center;
+      gap: 24px;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .hero-fixed video { height: 120px; width: auto; object-fit: contain; border-radius: 8px; pointer-events: none; }
+    .hero-text {
+      font-family: 'LuckiestGuy', cursive;
+      font-size: 1.5rem; color: #fff;
+      letter-spacing: 0.04em; line-height: 1.2;
+    }
+
+    /* ── SCROLLABLE WRAPPER ── */
+    /* .page-clip is the scrollable viewport, fixed below the navbar.
+       This means the panel can NEVER scroll behind the dark navbar. */
+    .page-clip {
+      position: fixed;
+      top: 72px;   /* navbar height */
+      left: 0; right: 0; bottom: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      z-index: 10;
+    }
+    .page-scroll {
+      position: relative;
+      margin-top: 200px; /* room for fixed hero (200px tall) */
+      padding: 0 24px 80px;
+    }
+
+    /* News mode — hero hidden, scroll from top of clip viewport */
+    body.news-mode .hero-fixed { display: none; }
+    body.news-mode .page-scroll { margin-top: 0; padding-top: 24px; }
+
+    /* ── WHITE PANEL (card) ── */
+    .panel {
+      background: #fff;
+      border-radius: 24px;
+      padding: 28px 28px 48px;
+      color: #111;
+      max-width: 1280px;
+      margin: 0 auto;
+      box-shadow: 0 8px 60px rgba(0,0,0,0.35);
+      min-height: 600px;
+    }
+
+    /* ── SECONDARY NAV ── */
+    .sec-nav { display: flex; gap: 10px; margin-bottom: 24px; }
+    .sec-nav-btn {
+      width: 44px; height: 44px; border-radius: 12px; border: 2px solid transparent;
+      background: #f3f4f6; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .sec-nav-btn img { width: 22px; height: 22px; object-fit: contain; }
+    .sec-nav-btn svg { width: 22px; height: 22px; }
+    .sec-nav-btn.active { background: #fff; border-color: #111; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .sec-nav-btn:not(.active):hover { background: #e5e7eb; }
+
+    /* ── VIEWS ── */
+    #liveView { display: block; }
+    #newsView { display: none; }
+
+    .live-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ── 3 CARDS HORIZONTAL ── */
+    .cards-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .commodity-card {
+      background: #fff;
+      border: 1.5px solid #f0f0f0;
+      border-radius: 16px;
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: box-shadow 0.18s, border-color 0.18s, transform 0.13s;
+    }
+    .commodity-card:hover {
+      box-shadow: 0 8px 30px rgba(0,0,0,0.09);
+      border-color: #d1d5db;
+      transform: translateY(-2px);
+    }
+    .commodity-card.selected { border-color: #111; box-shadow: 0 0 0 2.5px #111; }
+    .card-ticker { font-weight: 700; font-size: 0.88rem; letter-spacing: 0.05em; }
+    .card-name { font-size: 0.7rem; color: #9ca3af; margin-top: 2px; margin-bottom: 14px; }
+    .card-price { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 3px; }
+    .card-change { font-size: 0.78rem; font-weight: 500; }
+    .change-up { color: #16a34a; }
+    .change-down { color: #dc2626; }
+    .card-error { color: #ef4444; font-size: 0.75rem; }
+    .skeleton { background: #f0f0f0; border-radius: 6px; animation: pulse 1.5s infinite; display: block; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── CHART CARD ── */
+    .chart-card {
+      background: #fafafa;
+      border: 1.5px solid #f0f0f0;
+      border-radius: 16px;
+      padding: 20px 22px 16px;
+    }
+    .chart-card-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 2px;
+    }
+    .chart-label {
+      font-size: 0.68rem; font-weight: 700; color: #9ca3af;
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .chart-price-big { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; }
+    .chart-change-line { font-size: 0.88rem; font-weight: 600; margin-top: 2px; }
+    .chart-timestamp { font-size: 0.7rem; color: #9ca3af; margin-top: 3px; }
+
+    .time-tabs { display: flex; gap: 4px; margin: 12px 0 10px; }
+    .time-tab {
+      padding: 5px 11px; border-radius: 8px; border: none;
+      font-size: 0.77rem; font-weight: 600; cursor: pointer;
+      background: transparent; color: #6b7280;
+      transition: background 0.13s, color 0.13s;
+    }
+    .time-tab:hover { background: #f3f4f6; color: #111; }
+    .time-tab.active { background: #111; color: #fff; }
+
+    .chart-area { position: relative; height: 220px; }
+    .chart-loader {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: #9ca3af; font-size: 0.85rem;
+    }
+
+    .stats-row {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      border-top: 1px solid #f0f0f0; margin-top: 14px; padding-top: 12px;
+    }
+    .stat-cell { padding: 4px 10px; border-right: 1px solid #f0f0f0; }
+    .stat-cell:first-child { padding-left: 0; }
+    .stat-cell:last-child { border-right: none; }
+    .stat-label { font-size: 0.68rem; color: #9ca3af; margin-bottom: 2px; }
+    .stat-value { font-size: 0.83rem; font-weight: 600; }
+
+    /* ── RIGHT COL: PREDICTION PANEL ── */
+    .right-col { position: sticky; top: 24px; }
+    .pred-panel {
+      background: #fafafa;
+      border: 1.5px solid #f0f0f0;
+      border-radius: 20px;
+      padding: 22px 20px;
+    }
+    .pred-panel-header {
+      font-size: 0.85rem; font-weight: 700; color: #111;
+      margin-bottom: 16px; padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .pred-empty {
+      text-align: center; padding: 40px 0;
+      color: #d1d5db; font-size: 0.82rem; line-height: 1.8;
+    }
+    .pred-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+    .pred-commodity-name { font-size: 1rem; font-weight: 700; }
+    .pred-acc-line { font-size: 0.67rem; color: #9ca3af; margin-bottom: 16px; }
+    .pred-dir-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .pred-dir-big { font-size: 1.65rem; font-weight: 800; }
+    .dir-up { color: #16a34a; }
+    .dir-down { color: #dc2626; }
+    .dir-badge { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; letter-spacing: 0.04em; }
+    .dir-badge-up { background: #dcfce7; color: #166534; }
+    .dir-badge-down { background: #fee2e2; color: #991b1b; }
+    .conf-label { font-size: 0.67rem; color: #6b7280; margin-bottom: 5px; }
+    .conf-bar-track { height: 6px; background: #e5e7eb; border-radius: 99px; margin-bottom: 16px; }
+    .conf-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+    .conf-bar-fill.up { background: #16a34a; }
+    .conf-bar-fill.down { background: #dc2626; }
+    .vol-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .vol-card { flex: 1; background: #fff; border: 1.5px solid #f0f0f0; border-radius: 10px; padding: 8px 10px; text-align: center; }
+    .vol-card.active-vol { border-color: #111; }
+    .vol-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }
+    .vol-pct { font-size: 1rem; font-weight: 700; margin-top: 2px; }
+    .vol-low .vol-pct { color: #16a34a; }
+    .vol-med .vol-pct { color: #f59e0b; }
+    .vol-high .vol-pct { color: #dc2626; }
+    .pred-stat-label { font-size: 0.67rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+    .pred-stat-val { font-size: 0.95rem; font-weight: 700; margin-bottom: 12px; }
+    .pred-divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
+    .bias-pill { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; margin-bottom: 14px; }
+    .bias-bull { background: #dcfce7; color: #166534; }
+    .bias-bear { background: #fee2e2; color: #991b1b; }
+    .bias-neu  { background: #f3f4f6; color: #6b7280; }
+    .pred-signals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+    .sig-label { font-size: 0.63rem; color: #9ca3af; margin-bottom: 2px; }
+    .sig-val { font-size: 0.82rem; font-weight: 600; }
+    .view-charts-btn {
+      width: 100%; padding: 9px; border-radius: 10px;
+      border: 1.5px solid #e5e7eb; background: #fff; cursor: pointer;
+      font-size: 0.75rem; font-weight: 600; color: #374151;
+      transition: background 0.15s, border-color 0.15s; margin-top: 16px;
+    }
+    .view-charts-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.55);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.22s;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-box {
+      background: #fff; border-radius: 24px;
+      width: 600px; max-width: 96vw; max-height: 90vh; overflow-y: auto;
+      padding: 28px 30px 28px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.22);
+      transform: translateY(20px) scale(0.97);
+      transition: transform 0.24s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s;
+      opacity: 0; color: #111;
+    }
+    .modal-overlay.open .modal-box { transform: translateY(0) scale(1); opacity: 1; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+    .modal-title-text { font-size: 0.75rem; font-weight: 700; color: #9ca3af; letter-spacing: 0.06em; text-transform: uppercase; }
+    .modal-close-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: none;
+      background: #f3f4f6; cursor: pointer; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      color: #374151; transition: background 0.15s;
+    }
+    .modal-close-btn:hover { background: #e5e7eb; }
+    .modal-pies-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pie-section { background: #fafafa; border-radius: 16px; padding: 18px 16px; text-align: center; }
+    .pie-title { font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .pie-canvas-wrap { position: relative; width: 140px; height: 140px; margin: 0 auto 10px; }
+    .pie-center-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .pie-center-pct { font-size: 1.3rem; font-weight: 800; }
+    .pie-center-sub { font-size: 0.6rem; color: #9ca3af; font-weight: 500; }
+    .pie-legend { display: flex; gap: 12px; justify-content: center; font-size: 0.7rem; color: #6b7280; margin-top: 6px; flex-wrap: wrap; }
+    .pie-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+    /* ═══════════════════════════════════
+       NEWS VIEW — Rich Card Design
+    ═══════════════════════════════════ */
+
+    /* Hero area for news mode */
+    .news-hero {
+      text-align: center; padding: 60px 0 40px;
+    }
+    .news-hero-title {
+      font-family: 'LuckiestGuy', cursive;
+      font-size: 2.5rem; color: #fff; letter-spacing: 0.05em; margin-bottom: 8px;
+    }
+    .news-hero-sub { font-size: 0.9rem; color: rgba(255,255,255,0.5); }
+
+    /* Filter pills */
+    .news-filter-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 20px; align-items: center;
+    }
+    .news-filter-pill {
+      padding: 7px 18px; border-radius: 99px;
+      font-size: 0.8rem; font-weight: 600;
+      border: 1.5px solid #e5e7eb;
+      background: #fff; color: #6b7280;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .news-filter-pill:hover { background: #f3f4f6; color: #111; border-color: #d1d5db; }
+    .news-filter-pill.active { background: #111; color: #fff; border-color: #111; }
+    .news-filter-pill.pill-gold.active   { background: #b45309; border-color: #b45309; }
+    .news-filter-pill.pill-silver.active { background: #4b5563; border-color: #4b5563; }
+    .news-filter-pill.pill-oil.active    { background: #1f2937; border-color: #1f2937; }
+    .news-filter-pill.pill-geo.active    { background: #1d4ed8; border-color: #1d4ed8; }
+    .news-filter-pill.pill-macro.active  { background: #065f46; border-color: #065f46; }
+
+    .news-section-label {
+      font-size: 0.68rem; font-weight: 700; color: #9ca3af;
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px;
+    }
+
+    /* ── FEATURED + GRID LAYOUT ── */
+    .news-layout { display: flex; flex-direction: column; gap: 16px; }
+
+    /* Featured card — big, full width, image left */
+    .news-featured {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      border: 1.5px solid #f0f0f0;
+      border-radius: 20px; overflow: hidden;
+      background: #fff; cursor: pointer;
+      transition: box-shadow 0.18s, transform 0.14s;
+      text-decoration: none; color: inherit;
+      min-height: 240px;
+    }
+    .news-featured:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .news-featured-body {
+      padding: 28px 28px 24px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .news-featured-source { font-size: 0.68rem; font-weight: 700; color: #9ca3af; letter-spacing: 0.08em; text-transform: uppercase; }
+    .news-featured-headline { font-size: 1.3rem; font-weight: 800; line-height: 1.35; color: #111; flex: 1; }
+    .news-featured-snippet { font-size: 0.85rem; color: #6b7280; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .news-featured-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+
+    /* Grid of smaller cards */
+    .news-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .news-card {
+      border: 1.5px solid #f0f0f0; border-radius: 16px;
+      overflow: hidden; background: #fff; cursor: pointer;
+      transition: box-shadow 0.18s, transform 0.13s;
+      text-decoration: none; color: inherit;
+      display: flex; flex-direction: column;
+    }
+    .news-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.09); border-color: #d1d5db; transform: translateY(-2px); }
+    .news-card-body { padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .news-card-source { font-size: 0.63rem; font-weight: 700; color: #9ca3af; letter-spacing: 0.08em; text-transform: uppercase; }
+    .news-card-headline { font-size: 0.88rem; font-weight: 700; line-height: 1.4; color: #111; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .news-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; }
+
+    /* Tags */
+    .ntag {
+      font-size: 0.63rem; font-weight: 700;
+      padding: 3px 9px; border-radius: 99px;
+    }
+    .ntag-gold   { background: #fef3c7; color: #92400e; }
+    .ntag-silver { background: #f3f4f6; color: #374151; }
+    .ntag-oil    { background: #1f2937; color: #f9fafb; }
+    .ntag-geo    { background: #eff6ff; color: #1d4ed8; }
+    .ntag-macro  { background: #ecfdf5; color: #065f46; }
+    .ntime { font-size: 0.65rem; color: #9ca3af; }
+
+    /* No placeholder icons — if no real image, card shows text only */
+    .news-card-img-wrap {
+      width: 100%; height: 160px; overflow: hidden;
+      background: #f3f4f6; flex-shrink: 0; position: relative;
+    }
+    .news-card-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; display: block; }
+    .news-card:hover .news-card-img-wrap img { transform: scale(1.05); }
+
+    /* Featured image wrap */
+    .news-featured-img-wrap {
+      position: relative; overflow: hidden; background: #f3f4f6;
+    }
+    .news-featured-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.4s ease; display: block;
+    }
+    .news-featured:hover .news-featured-img-wrap img { transform: scale(1.04); }
+
+    /* Text-only variant (no image) */
+    .news-card.no-img .news-card-body { padding-top: 20px; }
+    .news-featured.no-img { grid-template-columns: 1fr; }
+    .news-featured.no-img .news-featured-body { padding: 32px 36px; }
+
+    /* Status states */
+    .news-status {
+      text-align: center; padding: 60px 0;
+      color: #9ca3af; font-size: 0.88rem; line-height: 1.8;
+    }
+    .nspin {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid #e5e7eb; border-top-color: #6b7280;
+      border-radius: 50%; animation: nspin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes nspin { to { transform: rotate(360deg); } }
+
+    /* ── ARTICLE READER ── */
+    .article-reader {
+      position: fixed; inset: 0; z-index: 400;
+      background: #fff; overflow-y: auto;
+      opacity: 0; pointer-events: none;
+      transform: translateY(24px);
+      transition: opacity 0.22s ease, transform 0.26s cubic-bezier(0.34,1.2,0.64,1);
+    }
+    .article-reader.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+    .article-reader-inner { max-width: 760px; margin: 0 auto; padding: 32px 28px 100px; }
+    .article-reader-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0;
+    }
+    .article-back-btn {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.82rem; font-weight: 600; color: #6b7280;
+      background: none; border: none; cursor: pointer; padding: 0; transition: color 0.13s;
+    }
+    .article-back-btn:hover { color: #111; }
+    .article-back-btn svg { width: 16px; height: 16px; }
+    .article-close-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid #e5e7eb; background: #f9fafb;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #374151; font-size: 1rem; transition: background 0.13s;
+    }
+    .article-close-btn:hover { background: #f3f4f6; }
+    .article-hero-img { width: 100%; height: 340px; object-fit: cover; border-radius: 16px; margin-bottom: 28px; }
+    .article-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .article-source-label { font-size: 0.68rem; font-weight: 700; color: #9ca3af; letter-spacing: 0.08em; text-transform: uppercase; }
+    .article-date-label { font-size: 0.72rem; color: #9ca3af; }
+    .article-title { font-size: 1.75rem; font-weight: 800; line-height: 1.28; color: #111; margin-bottom: 16px; }
+    .article-tags-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+    .article-divider { height: 1px; background: #f0f0f0; margin: 20px 0; }
+    .article-body { font-size: 1rem; line-height: 1.8; color: #374151; }
+    .article-body p { margin-bottom: 1.1rem; }
+    .article-orig-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 28px; padding: 9px 18px;
+      border: 1.5px solid #e5e7eb; border-radius: 10px;
+      background: #f9fafb; font-size: 0.8rem; font-weight: 600;
+      color: #374151; text-decoration: none; cursor: pointer;
+      transition: background 0.13s, border-color 0.13s;
+    }
+    .article-orig-link:hover { background: #f3f4f6; border-color: #d1d5db; }
+    .article-orig-link svg { width: 14px; height: 14px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1100px) {
+      .news-featured { grid-template-columns: 280px 1fr; }
+      .news-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .live-layout { grid-template-columns: 1fr; }
+      .right-col { position: static; }
+      .cards-row { grid-template-columns: 1fr; }
+      .panel { padding: 20px 16px 40px; border-radius: 18px; }
+      .news-featured { grid-template-columns: 1fr; min-height: auto; }
+      .news-featured-img { height: 200px; }
+      .news-cards-grid { grid-template-columns: 1fr; }
+      .page-scroll { padding: 0 12px 60px; }
+    }
+    @media (max-width: 600px) {
+      .modal-pies-row { grid-template-columns: 1fr; }
+      .article-reader-inner { padding: 20px 16px 80px; }
+      .article-title { font-size: 1.35rem; }
+      .hero-fixed video { height: 70px; }
+      .hero-text { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR (fixed) ── -->
+<nav class="navbar">
+  <div class="logo">
+    <img class="logo-img" src="assets/logo/image.png" alt="Quant"
+         onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='block';" />
+    <span class="logo-fallback">Quant</span>
+  </div>
+  <div class="nav-icons">
+    <button class="nav-icon-btn" onclick="location.href='dashboard.html'" title="Dashboard">
+      <img src="assets/images/background/dashboard.png" alt="Dashboard"
+           onerror="this.outerHTML='<svg width=22 height=22 viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;white&quot; stroke-width=&quot;2&quot;><rect x=&quot;3&quot; y=&quot;3&quot; width=&quot;7&quot; height=&quot;7&quot; rx=&quot;1&quot;/><rect x=&quot;14&quot; y=&quot;3&quot; width=&quot;7&quot; height=&quot;7&quot; rx=&quot;1&quot;/><rect x=&quot;3&quot; y=&quot;14&quot; width=&quot;7&quot; height=&quot;7&quot; rx=&quot;1&quot;/><rect x=&quot;14&quot; y=&quot;14&quot; width=&quot;7&quot; height=&quot;7&quot; rx=&quot;1&quot;/></svg>'" />
+    </button>
+    <button class="nav-icon-btn active" id="navPredBtn" title="Predictions">
+      <img src="assets/images/background/predictions.png" alt="Predictions"
+           onerror="this.outerHTML='<svg width=22 height=22 viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;white&quot; stroke-width=&quot;2&quot;><polyline points=&quot;22 7 13.5 15.5 8.5 10.5 2 17&quot;/><polyline points=&quot;16 7 22 7 22 13&quot;/></svg>'" />
+    </button>
+  </div>
+</nav>
+
+<!-- ── HERO (fixed, behind panel — only shown in live mode) ── -->
+<div class="hero-fixed" id="heroFixed">
+  <video autoplay loop muted playsinline>
+    <source src="assets/videos/lightup.mp4" type="video/mp4">
+  </video>
+  <div class="hero-text">Wait for the Light.</div>
+</div>
+
+<!-- ── SCROLLABLE CLIP (never goes behind navbar) ── -->
+<div class="page-clip">
+<div class="page-scroll" id="pageScroll">
+  <div class="panel" id="mainPanel">
+
+    <!-- Secondary Nav -->
+    <div class="sec-nav">
+      <button class="sec-nav-btn active" id="btnLive" onclick="switchView('live')" title="Live Market Data">
+        <img src="assets/images/icons/chart.png" alt="Live"
+             onerror="this.outerHTML='<svg width=22 height=22 viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;><polyline points=&quot;22 12 18 12 15 21 9 3 6 12 2 12&quot;/></svg>'" />
+      </button>
+      <button class="sec-nav-btn" id="btnNews" onclick="switchView('news')" title="Market News">
+        <img src="assets/images/icons/news.png" alt="News"
+             onerror="this.outerHTML='<svg width=22 height=22 viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;><path d=&quot;M4 6h16M4 12h16M4 18h7&quot;/></svg>'" />
+      </button>
+    </div>
+
+    <!-- ═══ LIVE VIEW ═══ -->
+    <div id="liveView">
+      <div class="live-layout">
+        <div class="left-col">
+          <div class="cards-row">
+            <div class="commodity-card selected" id="card-gold" onclick="selectCard('gold')">
+              <div class="card-ticker">GOLD</div>
+              <div class="card-name">Gold Futures (GC=F)</div>
+              <div class="card-price" id="price-gold"><span class="skeleton" style="width:100px;height:22px;"></span></div>
+              <div class="card-change" id="change-gold"><span class="skeleton" style="width:110px;height:13px;margin-top:5px;"></span></div>
+            </div>
+            <div class="commodity-card" id="card-silver" onclick="selectCard('silver')">
+              <div class="card-ticker">SILVER</div>
+              <div class="card-name">Silver Futures (SI=F)</div>
+              <div class="card-price" id="price-silver"><span class="skeleton" style="width:100px;height:22px;"></span></div>
+              <div class="card-change" id="change-silver"><span class="skeleton" style="width:110px;height:13px;margin-top:5px;"></span></div>
+            </div>
+            <div class="commodity-card" id="card-oil" onclick="selectCard('oil')">
+              <div class="card-ticker">OIL</div>
+              <div class="card-name">Crude Oil Futures (CL=F)</div>
+              <div class="card-price" id="price-oil"><span class="skeleton" style="width:100px;height:22px;"></span></div>
+              <div class="card-change" id="change-oil"><span class="skeleton" style="width:110px;height:13px;margin-top:5px;"></span></div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-label" id="chartLabel">GOLD (GC=F)</div>
+                <div class="chart-price-big" id="chartPrice">—</div>
+                <div class="chart-change-line" id="chartChange">—</div>
+                <div class="chart-timestamp" id="chartTimestamp"></div>
+              </div>
+            </div>
+            <div class="time-tabs" id="timeTabs">
+              <button class="time-tab active" data-range="1d" onclick="switchRange('1d')">1D</button>
+              <button class="time-tab" data-range="5d"  onclick="switchRange('5d')">5D</button>
+              <button class="time-tab" data-range="1mo" onclick="switchRange('1mo')">1M</button>
+              <button class="time-tab" data-range="6mo" onclick="switchRange('6mo')">6M</button>
+              <button class="time-tab" data-range="ytd" onclick="switchRange('ytd')">YTD</button>
+              <button class="time-tab" data-range="1y"  onclick="switchRange('1y')">1Y</button>
+              <button class="time-tab" data-range="5y"  onclick="switchRange('5y')">5Y</button>
+            </div>
+            <div class="chart-area">
+              <canvas id="priceChart"></canvas>
+              <div class="chart-loader" id="chartLoader">Loading chart…</div>
+            </div>
+            <div class="stats-row">
+              <div class="stat-cell"><div class="stat-label">Open</div><div class="stat-value" id="statOpen">—</div></div>
+              <div class="stat-cell"><div class="stat-label">Day's Range</div><div class="stat-value" id="statRange">—</div></div>
+              <div class="stat-cell"><div class="stat-label">Volume</div><div class="stat-value" id="statVolume">—</div></div>
+              <div class="stat-cell"><div class="stat-label">Avg Volume</div><div class="stat-value" id="statAvgVol">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="right-col">
+          <div class="pred-panel">
+            <div class="pred-panel-header">Prediction</div>
+            <div id="predPanelContent">
+              <div class="pred-empty">Loading gold<br>prediction…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /liveView -->
+
+    <!-- ═══ NEWS VIEW ═══ -->
+    <div id="newsView">
+      <div class="news-filter-row" id="newsFilterRow">
+        <button class="news-filter-pill active"      data-filter="all"    onclick="setNewsFilter('all',this)">All news</button>
+        <button class="news-filter-pill pill-gold"   data-filter="gold"   onclick="setNewsFilter('gold',this)">Gold</button>
+        <button class="news-filter-pill pill-silver" data-filter="silver" onclick="setNewsFilter('silver',this)">Silver</button>
+        <button class="news-filter-pill pill-oil"    data-filter="oil"    onclick="setNewsFilter('oil',this)">Oil</button>
+        <button class="news-filter-pill pill-geo"    data-filter="geo"    onclick="setNewsFilter('geo',this)">Geopolitical</button>
+        <button class="news-filter-pill pill-macro"  data-filter="macro"  onclick="setNewsFilter('macro',this)">Macro</button>
+      </div>
+      <div class="news-section-label" id="newsSectionLabel">Latest market news</div>
+      <div class="news-layout" id="newsLayout">
+        <div class="news-status"><span class="nspin"></span> Fetching market news…</div>
+      </div>
+    </div>
+
+  </div><!-- /panel -->
+</div><!-- /page-scroll -->
+</div><!-- /page-clip -->
+
+<!-- ── PIE MODAL ── -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title-text" id="modalTitle">GOLD — Analytics</span>
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-pies-row">
+      <div class="pie-section">
+        <div class="pie-title">Direction Probability</div>
+        <div class="pie-canvas-wrap">
+          <canvas id="pieDir"></canvas>
+          <div class="pie-center-label">
+            <span class="pie-center-pct" id="pieDirPct">—</span>
+            <span class="pie-center-sub" id="pieDirLabel">—</span>
+          </div>
+        </div>
+        <div class="pie-legend">
+          <span><span class="pie-dot" style="background:#16a34a;"></span>UP</span>
+          <span><span class="pie-dot" style="background:#dc2626;"></span>DOWN</span>
+        </div>
+      </div>
+      <div class="pie-section">
+        <div class="pie-title">Volatility Breakdown</div>
+        <div class="pie-canvas-wrap">
+          <canvas id="pieVol"></canvas>
+          <div class="pie-center-label">
+            <span class="pie-center-pct" id="pieVolPct">—</span>
+            <span class="pie-center-sub" id="pieVolLabel">—</span>
+          </div>
+        </div>
+        <div class="pie-legend">
+          <span><span class="pie-dot" style="background:#16a34a;"></span>Low</span>
+          <span><span class="pie-dot" style="background:#f59e0b;"></span>Med</span>
+          <span><span class="pie-dot" style="background:#dc2626;"></span>High</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ARTICLE READER ── -->
+<div class="article-reader" id="articleReader">
+  <div class="article-reader-inner">
+    <div class="article-reader-topbar">
+      <button class="article-back-btn" onclick="closeArticle()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to news
+      </button>
+      <button class="article-close-btn" onclick="closeArticle()">✕</button>
+    </div>
+    <div id="articleReaderContent"></div>
+  </div>
+</div>
+
+<script>
+/* ─── CONFIG ─── */
+const API      = 'http://52.66.48.74:5050/api/commodity';
+const PRED_API = 'http://52.66.48.74:5050/api/prediction';
+const NEWS_API = 'http://52.66.48.74:5050/api/news';
+
+let activeChart = null, pieDirChart = null, pieVolChart = null;
+let currentCommodity = 'gold', currentRange = '1d';
+let newsLoaded = false;
+const predCache = {};
+
+const CHART_LABELS = { gold:'GOLD (GC=F)', silver:'SILVER (SI=F)', oil:'CRUDE OIL (CL=F)' };
+const rangeMap = {
+  '1d':  { period:'1d',  interval:'5m'  },
+  '5d':  { period:'5d',  interval:'30m' },
+  '1mo': { period:'1mo', interval:'1h'  },
+  '6mo': { period:'6mo', interval:'1d'  },
+  'ytd': { period:'ytd', interval:'1d'  },
+  '1y':  { period:'1y',  interval:'1wk' },
+  '5y':  { period:'5y',  interval:'1mo' },
+};
+
+/* ─── TAG CONFIG ─── */
+const TAG_LABELS  = { gold:'Gold', silver:'Silver', oil:'Oil', geo:'Geopolitical', macro:'Macro' };
+const TAG_CLASSES = { gold:'ntag-gold', silver:'ntag-silver', oil:'ntag-oil', geo:'ntag-geo', macro:'ntag-macro' };
+const TAG_PH_CLASS = { gold:'ph-gold', silver:'ph-silver', oil:'ph-oil', geo:'ph-geo', macro:'ph-macro' };
+const TAG_ICONS   = { gold:'🥇', silver:'🪙', oil:'🛢️', geo:'🌍', macro:'📊' };
+
+/* ─── UTILS ─── */
+function fmt(n, dec=2) {
+  if (n == null || isNaN(n)) return '—';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:dec, maximumFractionDigits:dec });
+}
+function fmtVol(n) {
+  if (!n) return '—';
+  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toString();
+}
+function timeAgo(dateStr) {
+  const d = new Date(dateStr);
+  const diff = Math.floor((Date.now() - d) / 60000);
+  if (isNaN(diff)) return '';
+  if (diff < 60) return `${diff}m ago`;
+  if (diff < 1440) return `${Math.floor(diff/60)}h ago`;
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+function detectTag(text) {
+  const t = (text || '').toLowerCase();
+  if (t.includes('silver'))                                                         return 'silver';
+  if (t.includes('oil')||t.includes('crude')||t.includes('brent')||
+      t.includes('wti')||t.includes('petroleum')||t.includes('opec'))              return 'oil';
+  if (t.includes('war')||t.includes('conflict')||t.includes('geopolit')||
+      t.includes('ukraine')||t.includes('russia')||t.includes('sanction')||
+      t.includes('middle east')||t.includes('iran')||t.includes('nato')||
+      t.includes('missile')||t.includes('troops'))                                 return 'geo';
+  if (t.includes('fed')||t.includes('federal reserve')||t.includes('rate')||
+      t.includes('inflation')||t.includes('cpi')||t.includes('gdp')||
+      t.includes('ecb')||t.includes('treasury')||t.includes('yield')||
+      t.includes('recession')||t.includes('monetary'))                             return 'macro';
+  return 'gold';
+}
+
+/* Try to extract og:image from article link via proxy */
+async function fetchOgImage(url) {
+  try {
+    if (!url) return null;
+    const res = await fetch(`${NEWS_API.replace('/news','/og-image')}?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return null;
+    const d = await res.json();
+    return d.image || null;
+  } catch { return null; }
+}
+
+/* ─── FETCH HELPERS ─── */
+async function fetchCommodity(name, period='1d', interval='5m') {
+  try {
+    const res = await fetch(`${API}?name=${name}&period=${period}&interval=${interval}`);
+    if (!res.ok) throw new Error();
+    return await res.json();
+  } catch {
+    try {
+      const res = await fetch(`${API}?name=${name}`);
+      if (!res.ok) throw new Error();
+      return await res.json();
+    } catch { return null; }
+  }
+}
+
+async function fetchPrediction(name) {
+  if (predCache[name]) return predCache[name];
+  try {
+    const res = await fetch(`${PRED_API}?name=${name}`);
+    const data = await res.json();
+    if (!data.error) predCache[name] = data;
+    return data;
+  } catch { return null; }
+}
+
+/* ─── CARDS ─── */
+async function loadCards() {
+  for (const name of ['gold','silver','oil']) {
+    const data = await fetchCommodity(name);
+    if (!data) {
+      document.getElementById(`price-${name}`).innerHTML = `<span class="card-error">Unavailable</span>`;
+      document.getElementById(`change-${name}`).innerHTML = `<span class="card-error">Server offline</span>`;
+      continue;
+    }
+    const open = data.open ?? 0, price = data.price ?? 0;
+    const pct = open ? ((price - open) / open * 100) : 0;
+    const isUp = pct >= 0;
+    document.getElementById(`price-${name}`).textContent = fmt(price);
+    document.getElementById(`change-${name}`).innerHTML =
+      `<span class="${isUp?'change-up':'change-down'}">${isUp?'↑':'↓'} ${Math.abs(pct).toFixed(2)}% vs open</span>`;
+  }
+}
+
+async function selectCard(name) {
+  if (currentCommodity === name) return;
+  currentCommodity = name;
+  currentRange = '1d';
+  document.querySelectorAll('.commodity-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`card-${name}`).classList.add('selected');
+  document.getElementById('chartLabel').textContent = CHART_LABELS[name];
+  setActiveTab('1d');
+  document.getElementById('chartLoader').style.display = 'flex';
+  document.getElementById('chartLoader').textContent = 'Loading chart…';
+  document.getElementById('chartPrice').textContent = '—';
+  document.getElementById('chartChange').textContent = '—';
+  document.getElementById('chartTimestamp').textContent = '';
+  document.getElementById('predPanelContent').innerHTML =
+    `<div class="pred-empty">Loading ${name} prediction…</div>`;
+  const [predData] = await Promise.all([fetchPrediction(name), renderChart(name, '1d')]);
+  if (predData && !predData.error) renderPredPanel(name, predData);
+}
+
+/* ─── CHART ─── */
+async function renderChart(name, range) {
+  const { period, interval } = rangeMap[range] || rangeMap['1d'];
+  const data = await fetchCommodity(name, period, interval);
+  if (!data) {
+    document.getElementById('chartLoader').textContent = '⚠ Could not load data. Is the server running?';
+    return;
+  }
+  const price = data.price ?? 0, open = data.open ?? 0;
+  const diff = price - open, pct = open ? (diff/open*100) : 0;
+  const isUp = diff >= 0;
+  const color = isUp ? '#16a34a' : '#dc2626';
+  document.getElementById('chartPrice').textContent = fmt(price);
+  document.getElementById('chartPrice').style.color = color;
+  document.getElementById('chartChange').innerHTML =
+    `<span style="color:${color}">${isUp?'+':''}${fmt(diff)} (${isUp?'+':''}${pct.toFixed(2)}%)</span>`;
+  document.getElementById('chartTimestamp').textContent =
+    `As of ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · Market data`;
+  document.getElementById('statOpen').textContent   = fmt(open);
+  document.getElementById('statRange').textContent  = `${fmt(data.day_low)} – ${fmt(data.day_high)}`;
+  document.getElementById('statVolume').textContent = fmtVol(data.volume);
+  document.getElementById('statAvgVol').textContent = fmtVol(data.volume);
+  document.getElementById('chartLoader').style.display = 'none';
+  const labels = (data.chart || []).map(d => d.time);
+  const values = (data.chart || []).map(d => d.close);
+  if (activeChart) { activeChart.destroy(); activeChart = null; }
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  activeChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ data: values, borderColor: color, borderWidth: 2,
+      pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: color,
+      fill: true,
+      backgroundColor: (ctx2) => {
+        const g = ctx2.chart.ctx.createLinearGradient(0,0,0,ctx2.chart.height);
+        g.addColorStop(0, isUp ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        return g;
+      }, tension: 0.3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: { legend:{display:false},
+        tooltip: { backgroundColor:'#fff', borderColor:'#e5e7eb', borderWidth:1,
+          titleColor:'#6b7280', bodyColor:'#111', bodyFont:{weight:'700',size:13}, padding:10,
+          callbacks: { label: item => ` ${fmt(item.raw)}` } } },
+      scales: {
+        x: { grid:{display:false}, ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8,maxRotation:0}, border:{display:false} },
+        y: { position:'right', grid:{color:'#f0f0f0'}, ticks:{color:'#9ca3af',font:{size:10},callback:v=>'$'+v.toLocaleString()}, border:{display:false,dash:[4,4]} }
+      }
+    }
+  });
+}
+
+function setActiveTab(range) {
+  document.querySelectorAll('#timeTabs .time-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.range === range);
+  });
+}
+async function switchRange(range) {
+  if (!currentCommodity || range === currentRange) return;
+  currentRange = range;
+  setActiveTab(range);
+  document.getElementById('chartLoader').style.display = 'flex';
+  document.getElementById('chartLoader').textContent = 'Loading chart…';
+  if (activeChart) { activeChart.destroy(); activeChart = null; }
+  await renderChart(currentCommodity, range);
+}
+
+/* ─── PRED PANEL ─── */
+function renderPredPanel(name, d) {
+  const isUp = d.direction.label === 'UP';
+  const vl   = d.volatility.label.toLowerCase();
+  const conf = d.direction.confidence;
+  const bias = d.signals.bias;
+  const biasClass = bias==='BULLISH'?'bias-bull':bias==='BEARISH'?'bias-bear':'bias-neu';
+  const biasText  = bias==='BULLISH'?'● Bullish signals':bias==='BEARISH'?'● Bearish signals':'● Neutral signals';
+  const vProba = d.volatility.proba;
+  document.getElementById('predPanelContent').innerHTML = `
+    <div class="pred-name-row"><div class="pred-commodity-name">${name.charAt(0).toUpperCase()+name.slice(1)}</div></div>
+    <div class="pred-acc-line">Dir accuracy ${d.direction.model_accuracy}% · Vol accuracy ${d.volatility.model_accuracy}%</div>
+    <div class="pred-dir-row">
+      <div class="pred-dir-big ${isUp?'dir-up':'dir-down'}">${isUp?'↑ UP':'↓ DOWN'}</div>
+      <span class="dir-badge ${isUp?'dir-badge-up':'dir-badge-down'}">${isUp?'UP':'DOWN'}</span>
+    </div>
+    <div class="conf-label">Direction confidence: ${conf}%</div>
+    <div class="conf-bar-track"><div class="conf-bar-fill ${isUp?'up':'down'}" style="width:${conf}%"></div></div>
+    <div class="vol-row">
+      <div class="vol-card vol-low ${vl==='low'?'active-vol':''}"><div class="vol-label">LOW</div><div class="vol-pct">${vProba.low}%</div></div>
+      <div class="vol-card vol-med ${vl==='medium'?'active-vol':''}"><div class="vol-label">MEDIUM</div><div class="vol-pct">${vProba.medium}%</div></div>
+      <div class="vol-card vol-high ${vl==='high'?'active-vol':''}"><div class="vol-label">HIGH</div><div class="vol-pct">${vProba.high}%</div></div>
+    </div>
+    <div class="pred-stat-label">Expected Move (ATR)</div>
+    <div class="pred-stat-val">±${d.expected_move_pct}%</div>
+    <span class="bias-pill ${biasClass}">${biasText}</span>
+    <div class="pred-divider"></div>
+    <div class="pred-signals-grid">
+      <div><div class="sig-label">RSI</div><div class="sig-val">${d.signals.rsi}</div></div>
+      <div><div class="sig-label">Stoch K</div><div class="sig-val">${d.signals.stoch_k}</div></div>
+      <div><div class="sig-label">MACD hist</div><div class="sig-val">${d.signals.macd_hist>0?'+':''}${d.signals.macd_hist}</div></div>
+      <div><div class="sig-label">BB position</div><div class="sig-val">${d.signals.bb_position}</div></div>
+    </div>
+    <button class="view-charts-btn" onclick="openPieModal('${name}')">View Probability Charts →</button>
+  `;
+}
+
+/* ─── VIEW SWITCHER ─── */
+function switchView(view) {
+  const isNews = view === 'news';
+  document.getElementById('liveView').style.display = isNews ? 'none' : 'block';
+  document.getElementById('newsView').style.display  = isNews ? 'block' : 'none';
+  document.getElementById('btnLive').classList.toggle('active', !isNews);
+  document.getElementById('btnNews').classList.toggle('active',  isNews);
+
+  if (isNews) {
+    document.body.classList.add('news-mode');
+    if (!newsLoaded) loadNews();
+  } else {
+    document.body.classList.remove('news-mode');
+  }
+}
+
+/* ─── PIE MODAL ─── */
+async function openPieModal(name) {
+  const labels = { gold:'GOLD — Analytics', silver:'SILVER — Analytics', oil:'CRUDE OIL — Analytics' };
+  document.getElementById('modalTitle').textContent = labels[name] || name.toUpperCase();
+  document.getElementById('pieDirPct').textContent = '—';
+  document.getElementById('pieDirLabel').textContent = '';
+  document.getElementById('pieVolPct').textContent = '—';
+  document.getElementById('pieVolLabel').textContent = '';
+  if (pieDirChart) { pieDirChart.destroy(); pieDirChart = null; }
+  if (pieVolChart) { pieVolChart.destroy(); pieVolChart = null; }
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const d = predCache[name] || await fetchPrediction(name);
+  if (!d || d.error) return;
+  const isUp = d.direction.label === 'UP';
+  const vl   = d.volatility.label.toLowerCase();
+  const conf = d.direction.confidence;
+  const upPct = isUp ? conf : (100 - conf);
+  const downPct = 100 - upPct;
+  const vProba = d.volatility.proba;
+  document.getElementById('pieDirPct').textContent = `${upPct.toFixed(0)}%`;
+  document.getElementById('pieDirPct').style.color = isUp ? '#16a34a' : '#dc2626';
+  document.getElementById('pieDirLabel').textContent = isUp ? 'UP' : 'DOWN';
+  pieDirChart = new Chart(document.getElementById('pieDir').getContext('2d'), {
+    type:'doughnut',
+    data:{ datasets:[{ data:[upPct,downPct], backgroundColor:['#16a34a','#dc2626'], borderWidth:0, hoverOffset:4 }] },
+    options:{ cutout:'72%', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, animation:{animateRotate:true,duration:700} }
+  });
+  const dominant = vl==='low'?vProba.low:vl==='medium'?vProba.medium:vProba.high;
+  document.getElementById('pieVolPct').textContent = `${dominant}%`;
+  document.getElementById('pieVolPct').style.color = vl==='low'?'#16a34a':vl==='medium'?'#f59e0b':'#dc2626';
+  document.getElementById('pieVolLabel').textContent = vl.toUpperCase();
+  pieVolChart = new Chart(document.getElementById('pieVol').getContext('2d'), {
+    type:'doughnut',
+    data:{ datasets:[{ data:[vProba.low,vProba.medium,vProba.high], backgroundColor:['#16a34a','#f59e0b','#dc2626'], borderWidth:0, hoverOffset:4 }] },
+    options:{ cutout:'72%', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, animation:{animateRotate:true,duration:700} }
+  });
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+/* ─── NEWS ─── */
+let _allArticles = [];
+let _currentFilter = 'all';
+
+function setNewsFilter(filter, btn) {
+  _currentFilter = filter;
+  document.querySelectorAll('.news-filter-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const labels = {
+    all:'Latest market news', gold:'Gold market news', silver:'Silver market news',
+    oil:'Crude oil & energy news', geo:'Geopolitical developments', macro:'Macro & central bank news'
+  };
+  document.getElementById('newsSectionLabel').textContent = labels[filter] || 'Latest news';
+  renderNewsLayout(_allArticles);
+}
+
+/* Build image element — real image only, no icons/placeholders */
+function buildFeaturedImg(article) {
+  if (!article._img) return '';   // no image = no image div at all
+  return `<div class="news-featured-img-wrap">
+    <img src="${article._img}" alt="" loading="lazy" onerror="this.parentElement.remove(); document.querySelector('.news-featured').classList.add('no-img');" />
+  </div>`;
+}
+
+function buildCardImg(article) {
+  if (!article._img) return '';   // no image = text-only card
+  return `<div class="news-card-img-wrap">
+    <img src="${article._img}" alt="" loading="lazy" onerror="this.parentElement.remove();" />
+  </div>`;
+}
+
+function renderNewsLayout(articles) {
+  const layout = document.getElementById('newsLayout');
+  let filtered = _currentFilter === 'all'
+    ? articles
+    : articles.filter(a => detectTag(a.title) === _currentFilter);
+
+  if (!filtered.length) {
+    layout.innerHTML = '<div class="news-status">No articles found for this filter.</div>';
+    return;
+  }
+
+  window._visibleArticles = filtered.slice(0, 13);
+  const [featured, ...rest] = window._visibleArticles;
+
+  const featTag      = detectTag(featured.title);
+  const featTagClass = TAG_CLASSES[featTag] || 'ntag-gold';
+  const featTagLabel = TAG_LABELS[featTag]  || 'Gold';
+  const featImgHtml  = buildFeaturedImg(featured);
+  const featNoImg    = !featured._img ? 'no-img' : '';
+
+  const featuredHTML = `
+    <div class="news-featured ${featNoImg}" onclick="openArticle(0)">
+      ${featImgHtml}
+      <div class="news-featured-body">
+        <div class="news-featured-source">${featured.source || 'News'}</div>
+        <div class="news-featured-headline">${featured.title || 'Untitled'}</div>
+        ${featured.description && featured.description.trim().toLowerCase() !== (featured.title||'').toLowerCase().trim()
+          ? `<div class="news-featured-snippet">${featured.description}</div>` : ''}
+        <div class="news-featured-footer">
+          <span class="ntag ${featTagClass}">${featTagLabel}</span>
+          <span class="ntime">${timeAgo(featured.published) || 'Recent'}</span>
+        </div>
+      </div>
+    </div>`;
+
+  const gridCards = rest.map((a, i) => {
+    const tag      = detectTag(a.title);
+    const tagClass = TAG_CLASSES[tag] || 'ntag-gold';
+    const tagLabel = TAG_LABELS[tag]  || 'Gold';
+    const cardImgHtml = buildCardImg(a);
+    const noImgClass  = !a._img ? 'no-img' : '';
+    return `
+      <div class="news-card ${noImgClass}" onclick="openArticle(${i + 1})">
+        ${cardImgHtml}
+        <div class="news-card-body">
+          <div class="news-card-source">${a.source || 'News'}</div>
+          <div class="news-card-headline">${a.title || 'Untitled'}</div>
+          <div class="news-card-footer">
+            <span class="ntag ${tagClass}">${tagLabel}</span>
+            <span class="ntime">${timeAgo(a.published) || 'Recent'}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  layout.innerHTML = featuredHTML + (rest.length ? `<div class="news-cards-grid">${gridCards}</div>` : '');
+}
+
+/* Fetch OG images from server proxy — no icons fallback */
+async function fetchImagesForArticles(articles) {
+  const OG_API = `http://127.0.0.1:5050/api/og-image`;
+  const batch = articles.slice(0, 10);
+  await Promise.all(batch.map(async (a) => {
+    if (!a.link || a._img) return;
+    try {
+      const res = await fetch(`${OG_API}?url=${encodeURIComponent(a.link)}`,
+        { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.image && d.image.startsWith('http')) a._img = d.image;
+      }
+    } catch { /* leave _img undefined — card will be text-only */ }
+  }));
+}
+
+async function loadNews() {
+  newsLoaded = true;
+  document.getElementById('newsLayout').innerHTML =
+    '<div class="news-status"><span class="nspin"></span> Fetching latest market news…</div>';
+
+  try {
+    const [goldNews, silverNews, oilNews] = await Promise.all([
+      fetch(`${NEWS_API}?name=gold`,   { signal: AbortSignal.timeout(10000) }).then(r => r.json()),
+      fetch(`${NEWS_API}?name=silver`, { signal: AbortSignal.timeout(10000) }).then(r => r.json()),
+      fetch(`${NEWS_API}?name=oil`,    { signal: AbortSignal.timeout(10000) }).then(r => r.json()),
+    ]);
+
+    const all = [
+      ...(Array.isArray(goldNews)   ? goldNews   : []),
+      ...(Array.isArray(silverNews) ? silverNews : []),
+      ...(Array.isArray(oilNews)    ? oilNews    : []),
+    ];
+    if (all.length === 0) throw new Error('No articles returned');
+
+    const seen = new Set();
+    const unique = all.filter(item => {
+      const key = (item.title || '').toLowerCase().slice(0, 60);
+      if (!key || seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    unique.sort((a, b) => new Date(b.published) - new Date(a.published));
+
+    _allArticles = unique;
+
+    // Render immediately with placeholders
+    renderNewsLayout(_allArticles);
+
+    // Then try to fetch OG images and re-render if any found
+    await fetchImagesForArticles(_allArticles);
+    renderNewsLayout(_allArticles);
+
+  } catch (err) {
+    document.getElementById('newsLayout').innerHTML = `
+      <div class="news-status" style="color:#ef4444;">
+        ⚠ Could not reach the news endpoint.<br>
+        <small style="color:#9ca3af;display:block;margin-top:8px;">
+          Make sure your Flask server is running on port 5050.<br>
+          Open via <code>http://127.0.0.1:5050/predictions.html</code>
+        </small>
+      </div>`;
+  }
+}
+
+/* ─── ARTICLE READER ─── */
+function openArticle(idx) {
+  const article = (window._visibleArticles || [])[idx];
+  if (!article) return;
+  const tag      = detectTag(article.title);
+  const tagClass = TAG_CLASSES[tag] || 'ntag-gold';
+  const tagLabel = TAG_LABELS[tag]  || 'Gold';
+  const dateStr  = article.published
+    ? new Date(article.published).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })
+    : '';
+  const heroImg = article._img
+    ? `<img class="article-hero-img" src="${article._img}" alt="" onerror="this.remove()" />` : '';
+  const origLink = article.link
+    ? `<a class="article-orig-link" href="${article.link}" target="_blank" rel="noopener noreferrer">
+         Read full article on ${article.source || 'source'}
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+       </a>` : '';
+  let bodyHtml = '';
+  const titleNorm = (article.title || '').toLowerCase().trim().replace(/\s+/g,' ');
+  const descNorm  = (article.description || '').toLowerCase().trim().replace(/\s+/g,' ');
+  const descIsTitle = descNorm === titleNorm || descNorm.startsWith(titleNorm.slice(0, 60));
+
+  if (article.content && article.content.trim() && !descIsTitle) {
+    bodyHtml = `<p>${article.content}</p>`;
+  } else if (article.description && article.description.trim() && !descIsTitle) {
+    bodyHtml = `<p>${article.description}</p>`;
+  }
+  // Always show "read full article" note since Google News RSS has no full content
+  bodyHtml += `<p style="color:#9ca3af;font-size:0.88rem;margin-top:${bodyHtml?'12px':'0'};">
+    Full article content is not available in the RSS feed preview. Click below to read the complete story on the original source.
+  </p>`;
+  document.getElementById('articleReaderContent').innerHTML = `
+    ${heroImg}
+    <div class="article-meta-row">
+      <span class="article-source-label">${article.source || 'News'}</span>
+      ${dateStr ? `<span class="article-date-label">${dateStr}</span>` : ''}
+    </div>
+    <h1 class="article-title">${article.title || 'Untitled'}</h1>
+    <div class="article-tags-row"><span class="ntag ${tagClass}">${tagLabel}</span></div>
+    <div class="article-divider"></div>
+    <div class="article-body">${bodyHtml}</div>
+    ${origLink}
+  `;
+  document.getElementById('articleReader').classList.add('open');
+  document.getElementById('articleReader').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeArticle() {
+  document.getElementById('articleReader').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ─── KEYBOARD ─── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('articleReader').classList.contains('open')) { closeArticle(); return; }
+    closeModal();
+  }
+});
+
+/* ─── INIT ─── */
+async function init() {
+  loadCards();
+  const [predData] = await Promise.all([fetchPrediction('gold'), renderChart('gold', '1d')]);
+  if (predData && !predData.error) renderPredPanel('gold', predData);
+}
+init();
+setInterval(loadCards, 60 * 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QUANT — Live Market Dashboard</title>
+    <link rel="shortcut icon" href="./assets/logo/logo.png" type="image/x-icon" />
+    <style>
+        /* ── Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #F8F8F8;
+            color: #1a1a1a;
+            min-height: 100vh;
+        }
+
+        /* ── Navbar ── */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 32px;
+            background: transparent;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-logo img {
+            height: 36px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        .nav-icons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: #f3f4f6;
+            border-radius: 14px;
+            padding: 6px 10px;
+        }
+
+        .nav-icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            transition: background 0.15s;
+            color: #374151;
+            font-size: 20px;
+            text-decoration: none;
+        }
+
+        .nav-icon-btn:hover { background: #e5e7eb; }
+        .nav-icon-btn.active {
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        .nav-icon-btn img {
+            width: 22px;
+            height: 22px;
+            object-fit: contain;
+        }
+
+        /* ── GIF Section ── */
+        .gif-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0 4px 0;
+        }
+
+        .crab-gif {
+            /* ── Adjust width & height here as needed ── */
+            width: 750px;
+            height: 300px;
+            object-fit: contain;
+        }
+
+        /* ── Market Table Section ── */
+        .market-section {
+            padding: 20px 24px 60px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ── Status Bar ── */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding: 0 2px;
+        }
+
+        .status-live {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #444;
+            font-weight: 500;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .last-updated {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        /* ── Table Wrapper ── */
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+            overflow-x: auto;
+        }
+
+        .market-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        /* ── Table Header ── */
+        .market-table thead tr {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .market-table thead th {
+            padding: 14px 18px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .market-table thead th.sortable {
+            cursor: pointer;
+        }
+        .market-table thead th.sortable:hover { color: #555; }
+
+        /* ── Table Body ── */
+        .market-table tbody tr {
+            border-bottom: 1px solid #fafafa;
+            transition: background 0.15s;
+        }
+
+        .market-table tbody tr:last-child { border-bottom: none; }
+        .market-table tbody tr:hover { background: #fafafa; }
+
+        .market-table tbody td {
+            padding: 16px 18px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        /* ── Rank ── */
+        .td-rank {
+            color: #bbb;
+            font-size: 13px;
+            font-weight: 500;
+            width: 40px;
+        }
+
+        /* ── Asset Cell ── */
+        .asset-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .asset-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #f3f4f6;
+        }
+
+        .asset-icon-fallback {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #6b7280;
+        }
+
+        .asset-info { display: flex; flex-direction: column; gap: 1px; }
+
+        .asset-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a1a;
+        }
+
+        .asset-symbol {
+            font-size: 11px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* ── Price ── */
+        .td-price {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a1a;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Change cells ── */
+        .change-positive { color: #16a34a; font-weight: 500; }
+        .change-negative { color: #dc2626; font-weight: 500; }
+        .change-neutral   { color: #888; font-weight: 500; }
+
+        /* ── Vol 24h% pill ── */
+        .vol-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            min-width: 58px;
+        }
+        .vol-pill.positive { background: #dcfce7; color: #16a34a; }
+        .vol-pill.negative { background: #fee2e2; color: #dc2626; }
+        .vol-pill.neutral  { background: #f3f4f6; color: #888; }
+
+        /* ── Market Cap / Vol numbers ── */
+        .td-number {
+            font-size: 13px;
+            color: #555;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Skeleton loader ── */
+        .skeleton-row td {
+            padding: 16px 18px;
+        }
+        .skeleton-bar {
+            height: 14px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ── Error State ── */
+        .error-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #aaa;
+        }
+        .error-state i { font-size: 32px; margin-bottom: 12px; display: block; }
+        .error-state p { font-size: 14px; }
+        .retry-btn {
+            margin-top: 16px;
+            padding: 8px 20px;
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .retry-btn:hover { opacity: 0.8; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .navbar { padding: 14px 18px; }
+            .market-section { padding: 16px 12px 48px; }
+            .hide-mobile { display: none; }
+            .market-table thead th,
+            .market-table tbody td { padding: 12px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── NAVBAR ── -->
+    <nav class="navbar">
+        <div class="navbar-logo">
+            <img src="./assets/logo/logo.png" alt="QUANT logo"
+                 onerror="this.outerHTML='<span style=\'font-size:1.5rem;font-weight:800;letter-spacing:-0.03em;color:#111\'>Quant</span>'" />
+        </div>
+        <div class="nav-icons">
+            <!-- Dashboard (active) -->
+            <button class="nav-icon-btn active" onclick="location.href='dashboard.html'" title="Dashboard">
+                <img src="assets/images/background/dashboard.png" alt="Dashboard"
+                     onerror="this.outerHTML='<svg width=22 height=22 viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><rect x=\'3\' y=\'3\' width=\'7\' height=\'7\' rx=\'1\'/><rect x=\'14\' y=\'3\' width=\'7\' height=\'7\' rx=\'1\'/><rect x=\'3\' y=\'14\' width=\'7\' height=\'7\' rx=\'1\'/><rect x=\'14\' y=\'14\' width=\'7\' height=\'7\' rx=\'1\'/></svg>'" />
+            </button>
+            <!-- Predictions -->
+            <button class="nav-icon-btn" onclick="location.href='predictions.html'" title="Live Predictions">
+                <img src="assets/images/background/predictions.png" alt="Predictions"
+                     onerror="this.outerHTML='<svg width=22 height=22 viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><polyline points=\'22 7 13.5 15.5 8.5 10.5 2 17\'/><polyline points=\'16 7 22 7 22 13\'/></svg>'" />
+            </button>
+        </div>
+    </nav>
+
+    <!-- ── CRAB GIF ── -->
+    <div class="gif-section">
+        <img
+            src="./assets/images/background/crab.gif"
+            alt="QUANT crab mascot"
+            class="crab-gif"
+        />
+    </div>
+
+    <!-- ── MARKET TABLE ── -->
+    <section class="market-section">
+        <div class="status-bar">
+            <div class="status-live">
+                <span class="live-dot"></span>
+                <span>Live Market Data</span>
+            </div>
+            <span class="last-updated" id="last-updated">Fetching...</span>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="market-table" id="market-table">
+                <thead>
+                    <tr>
+                        <th class="td-rank">#</th>
+                        <th>Asset</th>
+                        <th class="sortable" data-col="price">Price</th>
+                        <th class="sortable" data-col="change24h">24h %</th>
+                        <th class="sortable hide-mobile" data-col="change7d">7d %</th>
+                        <th class="sortable hide-mobile" data-col="marketcap">Market Cap</th>
+                        <th class="sortable hide-mobile" data-col="vol24h">Vol 24h</th>
+                        <th class="hide-mobile">Vol 24h %</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- skeleton rows while loading -->
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton-bar" style="width:20px"></div></td>
+                        <td><div class="skeleton-bar" style="width:120px"></div></td>
+                        <td><div class="skeleton-bar" style="width:80px"></div></td>
+                        <td><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:90px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:70px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:60px"></div></td>
+                    </tr>
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton-bar" style="width:20px"></div></td>
+                        <td><div class="skeleton-bar" style="width:100px"></div></td>
+                        <td><div class="skeleton-bar" style="width:75px"></div></td>
+                        <td><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:85px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:65px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:55px"></div></td>
+                    </tr>
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton-bar" style="width:20px"></div></td>
+                        <td><div class="skeleton-bar" style="width:110px"></div></td>
+                        <td><div class="skeleton-bar" style="width:70px"></div></td>
+                        <td><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:90px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:70px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:60px"></div></td>
+                    </tr>
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton-bar" style="width:20px"></div></td>
+                        <td><div class="skeleton-bar" style="width:90px"></div></td>
+                        <td><div class="skeleton-bar" style="width:80px"></div></td>
+                        <td><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:80px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:60px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:55px"></div></td>
+                    </tr>
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton-bar" style="width:20px"></div></td>
+                        <td><div class="skeleton-bar" style="width:115px"></div></td>
+                        <td><div class="skeleton-bar" style="width:75px"></div></td>
+                        <td><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:50px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:88px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:68px"></div></td>
+                        <td class="hide-mobile"><div class="skeleton-bar" style="width:58px"></div></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script>
+        // ── Config ──
+        const COINS = [
+            'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
+            'ripple', 'usd-coin', 'dogecoin', 'cardano', 'tron',
+            'avalanche-2', 'shiba-inu', 'polkadot', 'chainlink', 'litecoin'
+        ];
+        const REFRESH_INTERVAL = 60000; // 60 seconds
+        let refreshTimer = null;
+        let marketData = [];
+
+        // ── Formatters ──
+        function formatPrice(n) {
+            if (n === null || n === undefined) return '—';
+            if (n >= 1000) return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (n >= 1)    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+            return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 8 });
+        }
+
+        function formatLargeNumber(n) {
+            if (n === null || n === undefined) return '—';
+            if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
+            if (n >= 1e9)  return '$' + (n / 1e9).toFixed(1) + 'B';
+            if (n >= 1e6)  return '$' + (n / 1e6).toFixed(1) + 'M';
+            if (n >= 1e3)  return '$' + (n / 1e3).toFixed(1) + 'K';
+            return '$' + n.toFixed(2);
+        }
+
+        function formatChange(n) {
+            if (n === null || n === undefined) return { text: '—', cls: 'change-neutral' };
+            const sign = n > 0 ? '+' : '';
+            const cls = n > 0 ? 'change-positive' : n < 0 ? 'change-negative' : 'change-neutral';
+            return { text: sign + n.toFixed(2) + '%', cls };
+        }
+
+        function getVolPillClass(n) {
+            if (n === null || n === undefined) return 'neutral';
+            if (n > 0) return 'positive';
+            if (n < 0) return 'negative';
+            return 'neutral';
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        // ── Render Table ──
+        function renderTable(coins) {
+            const tbody = document.getElementById('table-body');
+            if (!coins || coins.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="8">
+                        <div class="error-state">
+                            <i class="bi bi-wifi-off"></i>
+                            <p>Could not load market data.</p>
+                            <button class="retry-btn" onclick="fetchData()">Retry</button>
+                        </div>
+                    </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = coins.map((coin, i) => {
+                const change24 = formatChange(coin.price_change_percentage_24h);
+                const change7d  = formatChange(coin.price_change_percentage_7d_in_currency);
+                const volPct    = coin.price_change_percentage_24h; // proxy for vol 24h %
+                const volClass  = getVolPillClass(volPct);
+                const volText   = volPct !== null ? (volPct > 0 ? '+' : '') + volPct.toFixed(1) + '%' : '—';
+
+                const iconHTML = coin.image
+                    ? `<img src="${coin.image}" alt="${coin.name}" class="asset-icon" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                    : '';
+                const fallbackHTML = `<div class="asset-icon-fallback" style="${coin.image ? 'display:none' : ''}">${coin.symbol?.slice(0,2).toUpperCase()}</div>`;
+
+                return `
+                <tr>
+                    <td class="td-rank">${coin.market_cap_rank || i + 1}</td>
+                    <td>
+                        <div class="asset-cell">
+                            ${iconHTML}
+                            ${fallbackHTML}
+                            <div class="asset-info">
+                                <span class="asset-name">${coin.name}</span>
+                                <span class="asset-symbol">${coin.symbol?.toUpperCase()}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="td-price">${formatPrice(coin.current_price)}</td>
+                    <td class="${change24.cls}">${change24.text}</td>
+                    <td class="${change7d.cls} hide-mobile">${change7d.text}</td>
+                    <td class="td-number hide-mobile">${formatLargeNumber(coin.market_cap)}</td>
+                    <td class="td-number hide-mobile">${formatLargeNumber(coin.total_volume)}</td>
+                    <td class="hide-mobile">
+                        <span class="vol-pill ${volClass}">${volText}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ── Fetch Data ──
+        async function fetchData() {
+            const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COINS.join(',')}&order=market_cap_desc&per_page=15&page=1&price_change_percentage=7d`;
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('API error ' + res.status);
+                const data = await res.json();
+                marketData = data;
+                renderTable(data);
+                document.getElementById('last-updated').textContent =
+                    'Updated ' + formatTime(new Date());
+            } catch (err) {
+                console.error('CoinGecko fetch error:', err);
+                // Show error only if table is empty (don't wipe existing data on refresh fail)
+                if (marketData.length === 0) {
+                    renderTable([]);
+                }
+                document.getElementById('last-updated').textContent = 'Failed to update';
+            }
+        }
+
+        // ── Auto Refresh ──
+        function startRefresh() {
+            fetchData();
+            refreshTimer = setInterval(fetchData, REFRESH_INTERVAL);
+        }
+
+        // ── Countdown indicator ──
+        let countdown = REFRESH_INTERVAL / 1000;
+        setInterval(() => {
+            countdown--;
+            if (countdown <= 0) countdown = REFRESH_INTERVAL / 1000;
+            const el = document.getElementById('last-updated');
+            if (el && el.textContent.startsWith('Updated')) {
+                // don't overwrite "Updated" text — just let it sit
+            }
+        }, 1000);
+
+        // ── Init ──
+        startRefresh();
+    </script>
+</body>
+</html>
