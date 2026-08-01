@@ -28,4 +28,3 @@ npm run build:tailwind
 
 
 
-For help contact [here](tally.so/r/woO0Kx). I'll get back to you in 24-48hrs during business days.
